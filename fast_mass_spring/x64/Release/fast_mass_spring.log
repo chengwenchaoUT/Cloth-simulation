@@ -1,0 +1,54 @@
+﻿  anttweakbar_wrapper.cpp
+  camera.cpp
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\camera.cpp(52,18): warning C4305:  '=': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\camera.cpp(144,13): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+  constraint.cpp
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\camera.cpp(151,15): warning C4244:  'initializing': conversion from 'genType' to 'float', possible loss of data
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\camera.cpp(151,15): warning C4244:         with
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\camera.cpp(151,15): warning C4244:         [
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\camera.cpp(151,15): warning C4244:             genType=double
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\camera.cpp(151,15): warning C4244:         ]
+  fps.cpp
+  glsl_wrapper.cpp
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\glsl_wrapper.cpp(191,63): warning C4267:  '=': conversion from 'size_t' to 'int', possible loss of data
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\glsl_wrapper.cpp(182,1): warning C4996:  'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  io_mesh.cpp
+  main.cpp
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.17763.0\ucrt\stdio.h(208): message :  see declaration of 'fopen'
+  math_headers.cpp
+  mesh.cpp
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+  primitive.cpp
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\mesh.cpp(418,53): warning C4244:  'argument': conversion from 'ScalarType' to 'float', possible loss of data
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.cpp(108,72): warning C4267:  'argument': conversion from 'size_t' to 'GLsizei', possible loss of data
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.cpp(142,17): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.cpp(202,19): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.cpp(202,44): warning C4244:  'initializing': conversion from 'double' to 'float', possible loss of data
+  scene.cpp
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.cpp(510,28): warning C4267:  '=': conversion from 'size_t' to 'unsigned int', possible loss of data
+  simulation.cpp
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\primitive.h(106,14): warning C4305:  'initializing': truncation from 'double' to 'float'
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\simulation.cpp(562,41): warning C4244:  '+=': conversion from 'Eigen::Index' to 'int', possible loss of data
+  stb_image.c
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\stb_image.c(760,1): warning C4244:  'initializing': conversion from '__int64' to 'int', possible loss of data
+  stb_image_write.c
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\stb_image.c(773,1): warning C4244:  'initializing': conversion from '__int64' to 'int', possible loss of data
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\fast_mass_spring\source\stb_image_write.h(326,1): warning C4244:  'initializing': conversion from '__int64' to 'int', possible loss of data
+scene.obj : error LNK2001: unresolved external symbol "public: class TiXmlDocument const * __cdecl TiXmlNode::GetDocument(void)const " (?GetDocument@TiXmlNode@@QEBAPEBVTiXmlDocument@@XZ)
+scene.obj : error LNK2001: unresolved external symbol "public: virtual __cdecl TiXmlNode::~TiXmlNode(void)" (??1TiXmlNode@@UEAA@XZ)
+scene.obj : error LNK2001: unresolved external symbol "public: char const * __cdecl TiXmlElement::Attribute(char const *,double *)const " (?Attribute@TiXmlElement@@QEBAPEBDPEBDPEAN@Z)
+scene.obj : error LNK2001: unresolved external symbol "protected: virtual void __cdecl TiXmlDocument::StreamIn(class std::basic_istream<char,struct std::char_traits<char> > *,class std::basic_string<char,struct std::char_traits<char>,class std::allocator<char> > *)" (?StreamIn@TiXmlDocument@@MEAAXPEAV?$basic_istream@DU?$char_traits@D@std@@@std@@PEAV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@3@@Z)
+scene.obj : error LNK2001: unresolved external symbol "protected: virtual class TiXmlNode * __cdecl TiXmlDocument::Clone(void)const " (?Clone@TiXmlDocument@@MEBAPEAVTiXmlNode@@XZ)
+scene.obj : error LNK2001: unresolved external symbol "public: virtual bool __cdecl TiXmlDocument::Accept(class TiXmlVisitor *)const " (?Accept@TiXmlDocument@@UEBA_NPEAVTiXmlVisitor@@@Z)
+scene.obj : error LNK2001: unresolved external symbol "public: virtual void __cdecl TiXmlDocument::Print(struct _iobuf *,int)const " (?Print@TiXmlDocument@@UEBAXPEAU_iobuf@@H@Z)
+scene.obj : error LNK2001: unresolved external symbol "public: virtual char const * __cdecl TiXmlDocument::Parse(char const *,class TiXmlParsingData *,enum TiXmlEncoding)" (?Parse@TiXmlDocument@@UEAAPEBDPEBDPEAVTiXmlParsingData@@W4TiXmlEncoding@@@Z)
+scene.obj : error LNK2001: unresolved external symbol "public: bool __cdecl TiXmlDocument::LoadFile(enum TiXmlEncoding)" (?LoadFile@TiXmlDocument@@QEAA_NW4TiXmlEncoding@@@Z)
+scene.obj : error LNK2001: unresolved external symbol "public: __cdecl TiXmlDocument::TiXmlDocument(char const *)" (??0TiXmlDocument@@QEAA@PEBD@Z)
+C:\Users\labuser\Desktop\Research\code\source_code_vs_build\source code cleaned\x64\Release\fast_mass_spring.exe : fatal error LNK1120: 10 unresolved externals

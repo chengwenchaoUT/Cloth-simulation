@@ -1,0 +1,26 @@
+Wireframe           0
+Texture             0
+ScreenWidth         1613
+ScreenHeight        800
+
+MeshType            2
+MeshMass            1
+TetFilePath         ./mesh_models/hippo.mesh
+TetScaling          11
+DressFilePath       ./Model/dress.obj
+DressScaling        0.1
+ClothDimension      21 21
+ClothCorners        -5 8 -5 5 -1.85 -3.26
+
+SimMethod           0
+Timestep            0.0333
+AttachmentStiffness 120
+StretchStiffness    80
+BendingStiffness    20
+GravityConstant     100
+DampingCoefficient  0.001
+IterationsPerFrame  10
+LSEnable            1
+LSStep              1
+LSAlpha             0.25
+LSBeta              0.1

@@ -75,4 +75,7 @@
 #define DEFAULT_MODEL "./mesh_models/hippo.mesh"
 #define DEFAULT_OBJ_MODEL "./obj_models/bunny.obj"
 
+#define COLOR_RED glm::vec3(255, 0, 0)
+#define COLOR_BLUE glm::vec3(0.3, 0.8, 1)
+
 #endif

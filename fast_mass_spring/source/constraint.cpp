@@ -132,7 +132,7 @@ void AttachmentConstraint::Draw(const VBO& vbos)
     else
         m_attachment_constraint_body.change_color(glm::vec3(0.8, 0.2, 0.2));
         
-    m_attachment_constraint_body.Draw(vbos);
+    m_attachment_constraint_body.Draw(vbos, false);
 }
 
 //----------SpringConstraint Class----------//

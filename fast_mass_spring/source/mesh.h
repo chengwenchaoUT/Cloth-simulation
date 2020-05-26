@@ -50,7 +50,8 @@ typedef enum
 {
     MESH_TYPE_CLOTH,
     MESH_TYPE_TET,
-	MESH_TYPE_DRESS,
+    MESH_TYPE_DRESS,
+    MESH_TYPE_SPHERE,
 
     MESH_TYPE_TOTAL_NUM
 } MeshType;
@@ -73,7 +74,7 @@ public:
     virtual ~Mesh() {Cleanup();}
 
     void Reset();
-	void moveTo(vec3 translation);
+	void moveTo(const glm::vec3& translation);
     virtual bool Init() {std::cout << "Warning: reach base class virtual init function." << std::endl; return false;}
     virtual void Cleanup();
 
@@ -84,8 +85,12 @@ public:
     virtual inline unsigned int GetNumberOfVertices() { return m_vertices_number; }
     virtual inline unsigned int GetDimension() { return m_system_dimension; }
     inline MeshType GetMeshType() { return m_mesh_type; }
+    inline VectorX GetCurrentPosition() { return m_current_positions; }
+    inline unsigned int GetVertexNumber() { return m_vertices_number; }
+    inline std::vector<unsigned int> GetTriangles() { return m_triangle_list; }
+    inline bool isRedColor(unsigned int id) { return m_colors[id] == glm::vec3(255, 0, 0); }
 
-protected:
+//protected:
     MeshType m_mesh_type;
 
     unsigned int m_vertices_number; // m
@@ -93,6 +98,7 @@ protected:
 
     // vertices positions/previous positions/mass
     VectorX m_current_positions; // 1x3m
+    VectorX m_previous_positions; // 1x3m
     VectorX m_current_velocities; // 1x3m
     SparseMatrix m_mass_matrix; // 3mx3m
     SparseMatrix m_inv_mass_matrix; // 3mx3m
@@ -107,6 +113,8 @@ protected:
     std::vector<glm::vec3> m_colors;
     std::vector<glm::vec2> m_texcoords;
     std::vector<unsigned int> m_triangle_list;
+    
+    std::vector<bool> isRollBack;
 
     // for all
     ScalarType m_total_mass;
@@ -124,6 +132,10 @@ protected:
 	// for dress
 	char m_dress_file_path[256];
 	ScalarType m_dress_scaling;
+
+    // for sphere
+    float m_radius;
+    unsigned int slice, stack;
 
 protected:
     // initialize every particle pos / vel / mass / color.
@@ -212,6 +224,30 @@ protected:
 
 	virtual void Draw(const VBO& vbos, bool wire_frame = false, int show_texture = 0);
 	virtual vector<int> findTopVerticesByY(int mesh_index = 0, float percetage = 0.10);
+};
+
+class SphereMesh : public Mesh
+{
+    friend class AntTweakBarWrapper;
+    friend class Simulation;
+
+public:
+    SphereMesh(int radius, int u_slice = 24, int u_stack = 10) : Mesh(MESH_TYPE_SPHERE) { 
+        m_radius = radius;  slice = u_slice; stack = u_stack;
+    }
+    virtual ~SphereMesh() {}
+
+    virtual bool Init();
+
+
+protected:
+
+    // initialize every particle pos / vel / mass / color.
+    virtual void generateParticleList();
+    // generate triangle list from vetices
+    virtual void generateTriangleList();
+    // generate edge list from the geometry representation.
+    virtual void generateEdgeList();
 };
 
 #endif

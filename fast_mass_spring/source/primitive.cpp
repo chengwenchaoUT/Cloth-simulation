@@ -60,6 +60,17 @@ bool lineTriangleIntersection(EigenVector3& A, EigenVector3& B, EigenVector3& C,
     return false;
 }
 
+void Primitive::move_to(const glm::vec3& translation)
+{
+    unsigned int size = m_positions.size();
+    for (unsigned int i = 0; i < size; ++i)
+    {
+        m_positions[i].x += translation.x;
+        m_positions[i].y += translation.y;
+        m_positions[i].z += translation.z;
+    }
+}
+
 //----------Base Class-----------//
 void Primitive::change_color(const glm::vec3& color)
 {
@@ -69,8 +80,10 @@ void Primitive::change_color(const glm::vec3& color)
     }
 }
 
-void Primitive::Draw(const VBO& vbos)
+void Primitive::Draw(const VBO& vbos, bool wire_frame)
 {
+    glPolygonMode(GL_FRONT_AND_BACK, (wire_frame ? GL_LINE : GL_FILL));
+
     // position
     glBindBuffer(GL_ARRAY_BUFFER, vbos.m_vbo);
     glBufferData(GL_ARRAY_BUFFER, 3 * m_positions.size() * sizeof(float), &m_positions[0], GL_STREAM_DRAW);

@@ -51,6 +51,7 @@ extern bool g_record;
 extern bool g_pause;
 extern bool g_show_wireframe;
 extern bool g_show_texture;
+extern bool g_show_model;
 
 //----------anttweakbar handlers----------//
 extern void TW_CALL reset_simulation(void*);
@@ -88,6 +89,7 @@ void AntTweakBarWrapper::Init()
     // visualization
     TwAddVarRW(m_control_panel_bar, "Wireframe", TwType(sizeof(bool)), &(g_show_wireframe), "group='Visualization'");
     TwAddVarRW(m_control_panel_bar, "Texture", TwType(sizeof(bool)), &(g_show_texture), "group='Visualization'");
+    TwAddVarRW(m_control_panel_bar, "Model", TwType(sizeof(bool)), &(g_show_model), "group='Visualization'");
     TwAddVarRW(m_control_panel_bar, "Width", TW_TYPE_INT32, &(g_screen_width), "min=640 group='Screen Resolution'");
     TwAddVarRW(m_control_panel_bar, "Height", TW_TYPE_INT32, &(g_screen_height), "min=480 group='Screen Resolution'");
     TwAddSeparator(m_control_panel_bar, NULL, "");
@@ -103,10 +105,11 @@ void AntTweakBarWrapper::Init()
     m_mesh_bar = TwNewBar("Mesh Settings");
     TwDefine(" 'Mesh Settings' size='200 250' position='10 10' color='210 240 255' text=dark ");
     // mesh type
-    TwEnumVal meshTypeStyleEV[3] =  {{MESH_TYPE_CLOTH, "Cloth"},
+    TwEnumVal meshTypeStyleEV[4] =  {{MESH_TYPE_CLOTH, "Cloth"},
                                      {MESH_TYPE_TET, "Tet Mesh"},
-									 {MESH_TYPE_DRESS, "Dress Mesh"}};
-    TwType meshTypeStyle = TwDefineEnum("MeshType", meshTypeStyleEV, 3);
+									 {MESH_TYPE_DRESS, "Dress Mesh"},
+                                     {MESH_TYPE_SPHERE, "Sphere Mesh"}};
+    TwType meshTypeStyle = TwDefineEnum("MeshType", meshTypeStyleEV, 4);
     TwAddVarRW(m_mesh_bar, "Mesh Type", meshTypeStyle, &g_mesh->m_mesh_type, " ");
     TwAddVarRW(m_mesh_bar, "Total Mass", TW_TYPE_SCALAR_TYPE, &(g_mesh->m_total_mass), " ");
     // tet settings
@@ -115,7 +118,9 @@ void AntTweakBarWrapper::Init()
 	// dress settings
 	TwAddVarRW(m_mesh_bar, "Dress File", TW_TYPE_CSSTRING(sizeof(g_mesh->m_dress_file_path)), &(g_mesh->m_dress_file_path), " group='Dress Settings' ");
 	TwAddVarRW(m_mesh_bar, "Dress Scaling", TW_TYPE_SCALAR_TYPE, &(g_mesh->m_dress_scaling), " min=0.01 group='Dress Settings' ");
-    // cloth settings
+    // sphere settings
+    TwAddVarRW(m_mesh_bar, "radius", TW_TYPE_INT32, &(g_mesh->m_radius), " label='Radius' min=0.01 group='Sphere radius' ");
+    TwDefine(" 'Mesh Settings'/'Sphere radius' group='Sphere Settings'");
     // cloth dimensions
     TwAddVarRW(m_mesh_bar, "dim1", TW_TYPE_INT32, &(g_mesh->m_dim[0]), " label='Width' min=2 group='Cloth Dimension' ");
     TwAddVarRW(m_mesh_bar, "dim2", TW_TYPE_INT32, &(g_mesh->m_dim[1]), " label='Length' min=2 group='Cloth Dimension' ");
@@ -211,16 +216,25 @@ int AntTweakBarWrapper::Update()
         TwDefine(" 'Mesh Settings'/'Tet Settings' visible=true");
 		TwDefine(" 'Mesh Settings'/'Dress Settings' visible=false");
 		TwDefine(" 'Mesh Settings'/'Cloth Settings' visible=false");
+        TwDefine(" 'Mesh Settings'/'Sphere Settings' visible=false");
         break;
 	case MESH_TYPE_DRESS:
 		TwDefine(" 'Mesh Settings'/'Tet Settings' visible=false");
 		TwDefine(" 'Mesh Settings'/'Dress Settings' visible=true");
 		TwDefine(" 'Mesh Settings'/'Cloth Settings' visible=false");
-		break;
+        TwDefine(" 'Mesh Settings'/'Sphere Settings' visible=false");
+        break;
     case MESH_TYPE_CLOTH:
         TwDefine(" 'Mesh Settings'/'Tet Settings' visible=false");
 		TwDefine(" 'Mesh Settings'/'Dress Settings' visible=false");
 		TwDefine(" 'Mesh Settings'/'Cloth Settings' visible=true");
+        TwDefine(" 'Mesh Settings'/'Sphere Settings' visible=false");
+        break;
+    case MESH_TYPE_SPHERE:
+        TwDefine(" 'Mesh Settings'/'Tet Settings' visible=false");
+        TwDefine(" 'Mesh Settings'/'Dress Settings' visible=false");
+        TwDefine(" 'Mesh Settings'/'Cloth Settings' visible=false");
+        TwDefine(" 'Mesh Settings'/'Sphere Settings' visible=true");
         break;
     }
 
@@ -295,6 +309,7 @@ void AntTweakBarWrapper::SaveSettings()
         // global settings:
         outfile << "Wireframe           " << g_show_wireframe << std::endl;
         outfile << "Texture             " << g_show_texture << std::endl;
+        outfile << "Model             " << g_show_model << std::endl;
         outfile << "ScreenWidth         " << g_screen_width << std::endl;
         outfile << "ScreenHeight        " << g_screen_height << std::endl;
         outfile << std::endl;
@@ -306,6 +321,7 @@ void AntTweakBarWrapper::SaveSettings()
         outfile << "TetScaling          " << g_mesh->m_tet_scaling << std::endl;
         outfile << "DressFilePath       " << g_mesh->m_dress_file_path<< std::endl;
         outfile << "DressScaling        " << g_mesh->m_dress_scaling << std::endl;
+        outfile << "SphereRadius        " << g_mesh->m_radius << std::endl;
 		outfile << "ClothDimension      " << g_mesh->m_dim[0] << " " \
                                           << g_mesh->m_dim[1] \
                                           << std::endl;
@@ -358,6 +374,7 @@ void AntTweakBarWrapper::LoadSettings()
         // global settings:
         infile >> ignoreToken >> g_show_wireframe;
         infile >> ignoreToken >> g_show_texture;
+        infile >> ignoreToken >> g_show_model;
         infile >> ignoreToken >> g_screen_width;
         infile >> ignoreToken >> g_screen_height;
 
@@ -367,7 +384,8 @@ void AntTweakBarWrapper::LoadSettings()
         infile >> ignoreToken >> g_mesh->m_tet_file_path;
         infile >> ignoreToken >> g_mesh->m_tet_scaling;
 		infile >> ignoreToken >> g_mesh->m_dress_file_path;
-		infile >> ignoreToken >> g_mesh->m_dress_scaling; 
+        infile >> ignoreToken >> g_mesh->m_dress_scaling;
+        infile >> ignoreToken >> g_mesh->m_radius;
 		infile >> ignoreToken >> g_mesh->m_dim[0] \
                               >> g_mesh->m_dim[1];
         infile >> ignoreToken >> g_mesh->m_corners[0][0] \
@@ -414,6 +432,7 @@ void AntTweakBarWrapper::DefaultSettings()
     // global settings
     g_show_wireframe = false;
     g_show_texture = false;
+    g_show_model = true;
     g_screen_width = 1024;
     g_screen_height = 768;
 
@@ -426,6 +445,8 @@ void AntTweakBarWrapper::DefaultSettings()
 	// dress
 	strcpy(g_mesh->m_dress_file_path, DEFAULT_MODEL);
 	g_mesh->m_dress_scaling = 1.0;
+    // sphere
+    g_mesh->m_radius = 5;
     // cloth
     g_mesh->m_dim[0] = 21;
     g_mesh->m_dim[1] = 21;

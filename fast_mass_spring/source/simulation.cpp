@@ -55,6 +55,8 @@ void Simulation::Reset()
 
 void Simulation::Update()
 {
+    cout << "INFO::Update:: simulation start...\n";
+    
     // update inertia term
     calculateInertiaY();
 
@@ -83,6 +85,86 @@ void Simulation::Update()
 
     // Add collision detection here using pos_next;
     VectorX penetration = collisionDetection(m_mesh->m_current_positions);
+    m_mesh->m_current_positions -= penetration;
+
+    // update velocity and damp
+    dampVelocity();
+
+    cout << "INFO::Update:: simulation step one ...\n";
+}
+
+void Simulation::Update_FCL()
+{
+    // save positions
+    m_mesh->m_previous_positions = m_mesh->m_current_positions;
+
+    // update inertia term
+    calculateInertiaY();
+
+    // update external force
+    calculateExternalForce();
+
+    // update cloth
+    switch (m_integration_method)
+    {
+    case INTEGRATION_EXPLICIT_EULER:
+        integrateExplicitEuler();
+        break;
+    case INTEGRATION_EXPLICIT_SYMPLECTIC:
+        integrateExplicitSymplectic();
+        break;
+    case INTEGRATION_IMPLICIT_EULER_BARAFF_WITKIN:
+        integrateImplicitBW();
+        break;
+    case INTEGRATION_GRADIENT_DESCENT:
+    case INTEGRATION_NEWTON_DESCENT:
+    case INTEGRATION_NWETON_DESCENT_PCG:
+    case INTEGRATION_LOCAL_GLOBAL:
+        integrateOptimizationMethod();
+        break;
+    }
+
+    // Add collision detection here using pos_next;
+    VectorX penetration = collisionDetection_FCL(m_mesh->m_current_positions, m_mesh->m_triangle_list);
+    m_mesh->m_current_positions -= penetration;
+
+    // update velocity and damp
+    dampVelocity();
+}
+
+void Simulation::Update_CCD()
+{
+    // save positions
+    m_mesh->m_previous_positions = m_mesh->m_current_positions;
+
+    // update inertia term
+    calculateInertiaY();
+
+    // update external force
+    calculateExternalForce();
+
+    // update cloth
+    switch (m_integration_method)
+    {
+    case INTEGRATION_EXPLICIT_EULER:
+        integrateExplicitEuler();
+        break;
+    case INTEGRATION_EXPLICIT_SYMPLECTIC:
+        integrateExplicitSymplectic();
+        break;
+    case INTEGRATION_IMPLICIT_EULER_BARAFF_WITKIN:
+        integrateImplicitBW();
+        break;
+    case INTEGRATION_GRADIENT_DESCENT:
+    case INTEGRATION_NEWTON_DESCENT:
+    case INTEGRATION_NWETON_DESCENT_PCG:
+    case INTEGRATION_LOCAL_GLOBAL:
+        integrateOptimizationMethod();
+        break;
+    }
+
+    // Add collision detection here using pos_next;
+    VectorX penetration = collisionDetection_CCD();
     m_mesh->m_current_positions -= penetration;
 
     // update velocity and damp
@@ -299,25 +381,40 @@ void Simulation::setupConstraints()
         }
         break;
 	case MESH_TYPE_DRESS:
-	{
-		// generating attachment constraints.
-		vector<int> top_vert = m_mesh->findTopVerticesByY(0, 0.07);
-		for (int i = 0; i < top_vert.size(); i++)
-		{
-			AddAttachmentConstraint(top_vert[i]);
-		}
+	    {
+		    // generating attachment constraints.
+		    vector<int> top_vert = m_mesh->findTopVerticesByY(0, 0.07);
+		    for (int i = 0; i < top_vert.size(); i++)
+		    {
+			    //AddAttachmentConstraint(top_vert[i]);
+		    }
 
-		// generate stretch constraints. assign a stretch constraint for each edge.
-		EigenVector3 p1, p2;
-		for (std::vector<Edge>::iterator e = m_mesh->m_edge_list.begin(); e != m_mesh->m_edge_list.end(); ++e)
-		{
-			p1 = m_mesh->m_current_positions.block_vector(e->m_v1);
-			p2 = m_mesh->m_current_positions.block_vector(e->m_v2);
-			SpringConstraint* c = new SpringConstraint(&m_stiffness_stretch, e->m_v1, e->m_v2, (p1 - p2).norm());
-			m_constraints.push_back(c);
-		}
-	}
-	break;
+		    // generate stretch constraints. assign a stretch constraint for each edge.
+		    EigenVector3 p1, p2;
+		    for (std::vector<Edge>::iterator e = m_mesh->m_edge_list.begin(); e != m_mesh->m_edge_list.end(); ++e)
+		    {
+			    p1 = m_mesh->m_current_positions.block_vector(e->m_v1);
+			    p2 = m_mesh->m_current_positions.block_vector(e->m_v2);
+			    SpringConstraint* c = new SpringConstraint(&m_stiffness_stretch, e->m_v1, e->m_v2, (p1 - p2).norm());
+			    m_constraints.push_back(c);
+		    }
+	    }
+	    break;
+    case MESH_TYPE_SPHERE:
+        {
+            // generating attachment constraints.
+
+            // generate stretch constraints. assign a stretch constraint for each edge.
+            EigenVector3 p1, p2;
+            for (std::vector<Edge>::iterator e = m_mesh->m_edge_list.begin(); e != m_mesh->m_edge_list.end(); ++e)
+            {
+                p1 = m_mesh->m_current_positions.block_vector(e->m_v1);
+                p2 = m_mesh->m_current_positions.block_vector(e->m_v2);
+                SpringConstraint* c = new SpringConstraint(&m_stiffness_stretch, e->m_v1, e->m_v2, (p1 - p2).norm());
+                m_constraints.push_back(c);
+            }
+        }
+        break;
     }
 }
 
@@ -414,6 +511,221 @@ VectorX Simulation::collisionDetection(const VectorX x)
             penetration.block_vector(i) += (dist) * normal;
         }
     }
+
+    return penetration;
+}
+
+VectorX Simulation::intersectSegTriangle(fcl::Triangle s, fcl::Triangle t, 
+    const VectorX s_vert, const VectorX s_vert_pre, vector<fcl::Vector3<double>> t_vert) {
+    VectorX penetration(m_mesh->m_system_dimension);
+    penetration.setZero();
+
+    // normal：n = a×b = （a.y*b.z-b.y*a.z , b.x*a.z-a.x*b.z , a.x*b.y-b.x*a.y）
+    unsigned int a_tri = t[0];
+    unsigned int b_tri = t[1];
+    unsigned int c_tri = t[2];
+    fcl::Vector3<double> v1 = t_vert[a_tri] - t_vert[b_tri];
+    fcl::Vector3<double> v2 = t_vert[a_tri] - t_vert[c_tri];
+    fcl::Vector3<double> n = fcl::Vector3<double>( 
+        v1.y() * v2.z() - v2.y() * v1.z(), 
+        v2.x() * v1.z() - v1.x() * v2.z(),
+        v1.x() * v2.y() - v2.x() * v1.y()
+        );
+    for (int i = 0; i < 3; i++) {
+        // distance from segment to plane
+        unsigned int index_mesh = s[i];
+        EigenVector3 sa = s_vert.block_vector(index_mesh);
+        EigenVector3 sb = s_vert_pre.block_vector(index_mesh);
+        
+        // compute joint
+        double d = (t_vert[a_tri] - sa).dot(n) / ((sa - sb).dot(n));
+        fcl::Vector3<double> ans = d * (sa - sb) + sa;
+
+        // 判断点是否在线段上
+        double max_x = sa.x() > sb.x() ? sa.x() : sb.x();
+        double min_x = sa.x() < sb.x() ? sa.x() : sb.x();
+        double max_y = sa.y() > sb.y() ? sa.y() : sb.y();
+        double min_y = sa.y() < sb.y() ? sa.y() : sb.y();
+        double max_z = sa.z() > sb.z() ? sa.z() : sb.z();
+        double min_z = sa.z() < sb.z() ? sa.z() : sb.z();
+        if (ans.x() <= max_x && ans.x() >= min_x
+            && ans.y() <= max_y && ans.y() >= min_y
+            && ans.z() <= max_z && ans.z() >= min_z) { // 1.在以该线段位对应角的长方体内
+            double tmp = ((ans - sa).cross((sb - sa))).norm();
+            if ( tmp == 0) { // 2.两个向量叉积为0，则在线段上
+                m_mesh->m_current_positions.block_vector(index_mesh) = ans;
+            }
+        }
+    }
+    return penetration;
+}
+
+VectorX Simulation::collisionDetection_FCL(const VectorX vert, const vector<unsigned int> tri)
+{
+    // FCL implementation of collision detection
+    VectorX penetration(m_mesh->m_system_dimension);
+    penetration.setZero();
+    typedef fcl::BVHModel<fcl::AABB<double>> BVH_Model;
+
+    // Mesh BVHModel
+    vector<fcl::Vector3<double>> mesh_vert;
+    vector<fcl::Triangle> mesh_tri;
+
+    for (unsigned int i = 0; i < m_mesh->m_vertices_number; i++)
+    {
+        mesh_vert.push_back(fcl::Vector3<double>(vert[3 * i], vert[3 * i + 1], vert[3 * i + 2]));
+    }
+    for (unsigned int i = 0; i < tri.size(); i = i + 3)
+    {
+        mesh_tri.push_back(fcl::Triangle(tri[i], tri[i + 1], tri[i + 2]));
+    }
+
+    shared_ptr<BVH_Model> mesh_gemo = make_shared<BVH_Model>();
+    mesh_gemo->beginModel();
+    mesh_gemo->addSubModel(mesh_vert, mesh_tri);
+    mesh_gemo->endModel();
+
+    // Primitive BVHModel 
+    shared_ptr<BVH_Model> primitive_gemo = make_shared<BVH_Model>();
+    vector<Primitive*> m_primitives = m_scene->getPrimitives();
+    vector<fcl::Vector3<double>> p_vert;
+    vector<fcl::Triangle> p_tri;
+    vector<glm::vec3> m_positions;
+    vector<unsigned short> m_indices;
+    for (vector<Primitive*>::iterator iter = m_primitives.begin(); iter != m_primitives.end(); ++iter)
+    {
+        m_positions = (*iter)->getVertices();
+        m_indices = (*iter)->getTriangles();
+
+        for (unsigned int i = 0; i < m_positions.size(); ++i)
+        {
+            p_vert.push_back(fcl::Vector3<double>(m_positions[i].x, m_positions[i].y, m_positions[i].z));
+        }
+        for (unsigned int i = 0; i < m_indices.size(); i = i + 3)
+        {
+            p_tri.push_back(fcl::Triangle(m_indices[i], m_indices[i + 1], m_indices[i + 2]));
+        }
+        primitive_gemo->beginModel();
+        primitive_gemo->addSubModel(p_vert, p_tri);
+        primitive_gemo->endModel();
+    }
+
+    fcl::CollisionObject<double> o1(mesh_gemo);
+    fcl::CollisionObject<double> o2(primitive_gemo);
+
+    // Compute collision - single contact and enable contact.
+    fcl::CollisionRequest<double> collisionRequest;
+    collisionRequest.gjk_solver_type = fcl::GST_LIBCCD;
+    collisionRequest.enable_contact = true;
+    collisionRequest.num_max_contacts = 100000;
+    fcl::CollisionResult<double> collisionResult;
+    fcl::collide(&o1, &o2, collisionRequest, collisionResult);
+
+    // Calculate penetration
+    vector<fcl::Contact<double>> contacts;
+    collisionResult.getContacts(contacts);
+
+    // init color
+    for (unsigned int k = 0; k < m_mesh->m_colors.size(); k++)
+    {
+        m_mesh->m_colors[k] = COLOR_BLUE;
+    }
+
+    // penetration
+    for (unsigned int i = 0; i < contacts.size(); i++) {
+        // the cloth
+        int b1 = contacts[i].b1;
+        // the character
+        int b2 = contacts[i].b2;    
+        //penetration = intersectSegTriangle(mesh_tri[b1], p_tri[b2], vert, m_mesh->m_previous_positions, p_vert);
+
+        for (unsigned int j = 0; j < 3; j++) {
+            unsigned int vert_index = tri[3 * b1 + j];
+            // penetration.block_vector(vert_index) += (-dist)*normal;
+            m_mesh->m_colors[vert_index] = COLOR_RED;
+
+            m_mesh->m_current_positions.block_vector(vert_index) =
+                m_mesh->m_previous_positions.block_vector(vert_index);
+            vert_index = m_indices[3 * b2 + j];
+            //m_primitives[0]->m_colors[vert_index] = COLOR_RED;
+        }
+    }
+    return penetration;
+}
+
+VectorX Simulation::collisionDetection_CCD()
+{
+    // CCD implementation of collision detection
+    VectorX penetration(m_mesh->m_system_dimension);
+    penetration.setZero();
+
+    vec3f_list vtxs;
+
+    // process cloth
+    VectorX cloth_pos = m_mesh->GetCurrentPosition();
+
+    for (unsigned int i = 0; i < m_mesh->GetVertexNumber(); i++)
+    {
+        vtxs.push_back(vec3f(cloth_pos[3 * i], cloth_pos[3 * i + 1], cloth_pos[3 * i + 2]));
+    }
+
+    // process primitives
+    vector<Primitive*> m_primitives = m_scene->getPrimitives();
+    vector<glm::vec3> m_positions;
+    for (vector<Primitive*>::iterator iter = m_primitives.begin(); iter != m_primitives.end(); ++iter)
+    {
+        m_positions = (*iter)->getVertices();
+
+        for (unsigned int i = 0; i < m_positions.size(); ++i)
+        {
+            vtxs.push_back(vec3f(m_positions[i].x, m_positions[i].y, m_positions[i].z));
+        }
+    }
+
+    // init color
+    for (unsigned int k = 0; k < m_mesh->m_colors.size(); k++)
+    {
+        m_mesh->m_colors[k] = COLOR_BLUE;
+    }
+
+    // init roll back
+    for (unsigned int k = 0; k < m_mesh->isRollBack.size(); k++)
+    {
+        m_mesh->isRollBack[k] = false;
+    }
+
+    ccdUpdateVtxs(vtxs);
+    ccdChecking(true);
+
+    for (unsigned int k = 0; k < m_mesh->isRollBack.size(); k++)
+    {
+        if (m_mesh->isRollBack[k]) {
+            m_mesh->m_current_positions.block_vector(k) =
+                m_mesh->m_previous_positions.block_vector(k);
+        }
+    }
+
+
+    vec3f_list vtxs_rb;
+    // process cloth
+    VectorX cloth_pos_rb = m_mesh->GetCurrentPosition();
+
+    for (unsigned int i = 0; i < m_mesh->GetVertexNumber(); i++)
+    {
+        vtxs_rb.push_back(vec3f(cloth_pos_rb[3 * i], cloth_pos_rb[3 * i + 1], cloth_pos_rb[3 * i + 2]));
+    }
+
+    // process primitives
+    for (vector<Primitive*>::iterator iter = m_primitives.begin(); iter != m_primitives.end(); ++iter)
+    {
+        m_positions = (*iter)->getVertices();
+
+        for (unsigned int i = 0; i < m_positions.size(); ++i)
+        {
+            vtxs_rb.push_back(vec3f(m_positions[i].x, m_positions[i].y, m_positions[i].z));
+        }
+    }
+    ccdUpdateCurVtxs(vtxs_rb);
 
     return penetration;
 }

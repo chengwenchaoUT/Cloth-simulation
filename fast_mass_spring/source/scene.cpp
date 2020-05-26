@@ -58,7 +58,7 @@ void Scene::LoadFromFile(const char* file_name)
     }
 }
 
-void Scene::Draw(const VBO& vbos, Shader* shader, float currentTime, Camera* camera, bool show_animation)
+void Scene::Draw(const VBO& vbos, Shader* shader, float currentTime, Camera* camera, bool show_animation, bool wire_frame)
 {
     for(std::vector<Primitive*>::iterator iter = m_primitives.begin(); iter != m_primitives.end(); ++iter)
     {
@@ -66,7 +66,8 @@ void Scene::Draw(const VBO& vbos, Shader* shader, float currentTime, Camera* cam
 			(*iter)->DrawAnim();
 		}
 		else {
-			(*iter)->Draw(vbos);
+            (*iter)->Draw(vbos, false);
+            //(*iter)->Draw(vbos, wire_frame);
 		}
     }
 }

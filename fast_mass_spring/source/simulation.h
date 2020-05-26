@@ -31,12 +31,14 @@
 #define _SIMULATION_H_
 
 #include <vector>
+#include <fcl/fcl.h>
 
 #include "global_headers.h"
 #include "anttweakbar_wrapper.h"
 #include "mesh.h"
 #include "constraint.h"
 #include "scene.h"
+#include "ccdAPI.h"
 
 class Scene;
 class Mesh;
@@ -73,6 +75,8 @@ public:
 
     void Reset();
     void Update();
+    void Update_FCL();
+    void Update_CCD();
     void DrawConstraints(const VBO& vbos);
 
     // select/unselect/move attachment constratins
@@ -82,6 +86,8 @@ public:
     void UnselectAttachmentConstraint();
     void AddAttachmentConstraint(unsigned int vertex_index); // add one attachment constraint at vertex_index
     void MoveSelectedAttachmentConstraintTo(const EigenVector3& target); // move selected attachement constraint to target
+    VectorX Simulation::intersectSegTriangle(fcl::Triangle s, fcl::Triangle t,
+        const VectorX s_vert, const VectorX s_vert_pre, vector<fcl::Vector3<double>> t_vert);
 
     // inline functions
     inline void SetReprefactorFlag() 
@@ -92,7 +98,9 @@ public:
         }
     }
     inline void SetMesh(Mesh* mesh) {m_mesh = mesh;}
-    inline void SetScene(Scene* scene) {m_scene = scene;}
+    inline void SetScene(Scene* scene) { m_scene = scene; }
+    inline Mesh* GetMesh() { return m_mesh; }
+    inline Scene* GetScene() {return m_scene;}
     
 protected:
 
@@ -146,6 +154,8 @@ private:
     void calculateInertiaY(); // calculate the inertia term: y = current_pos + current_vel*h
     void calculateExternalForce(); // wind force is propotional to the area of triangles projected on the tangential plane
     VectorX collisionDetection(const VectorX x); // detect collision and return a vector of penetration
+    VectorX collisionDetection_FCL(const VectorX vert, const vector<unsigned int> tri); // detect collision and return a vector of penetration
+    VectorX collisionDetection_CCD(); // detect collision and return a vector of penetration
 
     void integrateExplicitEuler();
     void integrateExplicitSymplectic();

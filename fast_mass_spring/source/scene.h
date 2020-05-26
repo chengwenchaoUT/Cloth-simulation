@@ -53,11 +53,12 @@ public:
     virtual ~Scene();
 
     void LoadFromFile(const char* file_name);
-    virtual void Draw(const VBO& vbos, Shader* shader, float currentTime, Camera* camera, bool show_animation);
+    virtual void Draw(const VBO& vbos, Shader* shader, float currentTime, Camera* camera, bool show_animation, bool wire_frame);
     void InsertPrimitve(Primitive* const new_primitive);
 
     bool StaticIntersectionTest(const EigenVector3& p, EigenVector3& normal, ScalarType& dist);
 
+    vector<Primitive*> getPrimitives() { return m_primitives; }
 protected:
     std::vector<Primitive*> m_primitives;
 

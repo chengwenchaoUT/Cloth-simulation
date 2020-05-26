@@ -38,14 +38,13 @@ void Mesh::Reset()
     Init();
 }
 
-void Mesh::moveTo(vec3 translation)
+void Mesh::moveTo(const glm::vec3& translation)
 {
 	unsigned int size = m_vertices_number;
 	for (unsigned int i = 0; i < size; ++i)
 	{
-		m_current_positions[3 * i + 0] += translation.x;
-		m_current_positions[3 * i + 1] += translation.y;
-		m_current_positions[3 * i + 2] += translation.z;
+        m_current_positions.block_vector(i) += EigenVector3(
+            translation.x, translation.y, translation.z);
 	}
 }
 
@@ -56,6 +55,7 @@ void Mesh::Cleanup()
     m_positions.clear();
     m_normals.clear();
     m_colors.clear();
+    isRollBack.clear();
     m_texcoords.clear();
     m_triangle_list.clear();
 }
@@ -236,6 +236,7 @@ void ClothMesh::generateParticleList()
     m_positions.resize(m_vertices_number);
     m_normals.resize(m_vertices_number);
     m_colors.resize(m_vertices_number);
+    isRollBack.resize(m_vertices_number);
     m_texcoords.resize(m_vertices_number);
 
     m_current_positions.resize(m_system_dimension);
@@ -286,6 +287,7 @@ void ClothMesh::generateParticleList()
         {
             index = m_dim[1] * i + k;
             m_colors[index] = mesh_color;
+            isRollBack[index] = false;
             m_texcoords[index] = glm::vec2(inv_1*i, inv_2*k);
         }
     }
@@ -652,6 +654,8 @@ void DressMesh::generateParticleList()
 	m_normals.resize(m_vertices_number);
 	m_colors.resize(m_vertices_number);
 	m_texcoords.resize(m_vertices_number);
+    isRollBack.resize(m_vertices_number);
+
 
 	// Assign initial position, velocity and mass to all the vertices.
 	// Assign color to all the vertices.
@@ -689,18 +693,22 @@ void DressMesh::generateParticleList()
 	m_identity_matrix.setFromTriplets(i_triplets.begin(), i_triplets.end());
 
 	// color
-	glm::vec3 red(255, 0, 0);
-	glm::vec3 blue(0.3, 0.8, 1);
 	for (index = 0; index < m_vertices_number; ++index)
 	{
-		m_colors[index] = blue;
+		m_colors[index] = COLOR_BLUE;
 	}
 
 	vector<int> top_vertices = findTopVerticesByY(0, 0.07);
 	for (index = 0; index < top_vertices.size(); ++index)
 	{
-		m_colors[top_vertices[index]] = red;
+		m_colors[top_vertices[index]] = COLOR_RED;
 	}
+
+    // is roll back
+    for (index = 0; index < m_vertices_number; ++index)
+    {
+        isRollBack[index] = false;
+    }
 }
 
 void DressMesh::generateTriangleList()
@@ -868,4 +876,277 @@ vector<int> DressMesh::findTopVerticesByY(int mesh_index, float percetage)
 	return top_vertices;
 }
 
+bool SphereMesh::Init()
+{
+    generateParticleList();
+    generateTriangleList();
+    generateEdgeList();
 
+    return true;
+}
+
+void SphereMesh::generateParticleList()
+{
+    glm::vec3 mat_color(0.6);
+
+    glm::vec3 tnormal(0.0, 1.0, 0.0), tpos;
+    tpos = m_radius * tnormal;
+
+    float theta_z, theta_y, sin_z;
+    float delta_y = 360.0 / slice, delta_z = 180.0 / stack;
+
+    m_vertices_number = slice * (stack - 1) + 2;
+    m_system_dimension = m_vertices_number * 3;
+    ScalarType unit_mass = m_total_mass / m_system_dimension;
+
+    m_positions.resize(m_vertices_number);
+    m_normals.resize(m_vertices_number);
+    m_colors.resize(m_vertices_number);
+    m_texcoords.resize(m_vertices_number);
+
+    // Assign initial position, velocity and mass to all the vertices.
+    // Assign color to all the vertices.
+    m_current_positions.resize(m_system_dimension);
+    m_current_velocities.resize(m_system_dimension);
+    m_mass_matrix.resize(m_system_dimension, m_system_dimension);
+    m_inv_mass_matrix.resize(m_system_dimension, m_system_dimension);
+    m_identity_matrix.resize(m_system_dimension, m_system_dimension);
+
+    // Assign initial position to all the vertices.
+    m_current_positions.setZero();
+    m_current_positions.block_vector(0) = GLM2Eigen(tpos);
+
+    //loop over the sphere
+    unsigned int index = 1;
+    for (theta_z = delta_z; theta_z < 179.99; theta_z += delta_z)
+    {
+        for (theta_y = 0.0; theta_y < 359.99; theta_y += delta_y)
+        {
+            sin_z = sin(glm::radians(theta_z));
+
+            tnormal.x = sin_z * cos(glm::radians(theta_y));
+            tnormal.y = cos(glm::radians(theta_z));
+            tnormal.z = -sin_z * sin(glm::radians(theta_y));
+
+            tpos = m_radius * tnormal;
+
+            m_current_positions.block_vector(index) = GLM2Eigen(tpos);
+            index++;
+        }
+    }
+
+    tnormal = glm::vec3(0.0, -1.0, 0.0);
+    tpos = m_radius * tnormal;
+    m_current_positions.block_vector(index) = GLM2Eigen(tpos);
+    // Assign initial velocity to zero
+    m_current_velocities.setZero();
+
+    // Assign mass matrix and an equally sized identity matrix
+    std::vector<SparseMatrixTriplet> i_triplets;
+    std::vector<SparseMatrixTriplet> m_triplets;
+    std::vector<SparseMatrixTriplet> m_inv_triplets;
+    i_triplets.clear();
+    m_triplets.clear();
+    ScalarType inv_unit_mass = 1.0 / unit_mass;
+    for (index = 0; index < m_system_dimension; index++)
+    {
+        i_triplets.push_back(SparseMatrixTriplet(index, index, 1));
+        m_triplets.push_back(SparseMatrixTriplet(index, index, unit_mass));
+        m_inv_triplets.push_back(SparseMatrixTriplet(index, index, inv_unit_mass));
+    }
+    m_mass_matrix.setFromTriplets(m_triplets.begin(), m_triplets.end());
+    m_inv_mass_matrix.setFromTriplets(m_inv_triplets.begin(), m_inv_triplets.end());
+    m_identity_matrix.setFromTriplets(i_triplets.begin(), i_triplets.end());
+
+    // color
+    for (index = 0; index < m_vertices_number; ++index)
+    {
+        m_colors[index] = COLOR_BLUE;
+    }
+}
+
+void SphereMesh::generateTriangleList()
+{
+    //indices
+    unsigned int j = 0, k = 0;
+    for (j = 0; j < slice - 1; ++j)
+    {
+        m_triangle_list.push_back(0);
+        m_triangle_list.push_back(j + 1);
+        m_triangle_list.push_back(j + 2);
+    }
+    m_triangle_list.push_back(0);
+    m_triangle_list.push_back(slice);
+    m_triangle_list.push_back(1);
+
+    for (j = 0; j < stack - 2; ++j)
+    {
+        for (k = 1 + slice * j; k < slice * (j + 1); ++k)
+        {
+            m_triangle_list.push_back(k);
+            m_triangle_list.push_back(k + slice);
+            m_triangle_list.push_back(k + slice + 1);
+
+            m_triangle_list.push_back(k);
+            m_triangle_list.push_back(k + slice + 1);
+            m_triangle_list.push_back(k + 1);
+        }
+        m_triangle_list.push_back(k);
+        m_triangle_list.push_back(k + slice);
+        m_triangle_list.push_back(k + 1);
+
+        m_triangle_list.push_back(k);
+        m_triangle_list.push_back(k + 1);
+        m_triangle_list.push_back(k + 1 - slice);
+    }
+
+    unsigned int bottom_id = (stack - 1) * slice + 1;
+    unsigned int offset = bottom_id - slice;
+    for (j = 0; j < slice - 1; ++j)
+    {
+        m_triangle_list.push_back(j + offset);
+        m_triangle_list.push_back(bottom_id);
+        m_triangle_list.push_back(j + offset + 1);
+    }
+    m_triangle_list.push_back(bottom_id - 1);
+    m_triangle_list.push_back(bottom_id);
+    m_triangle_list.push_back(offset);
+
+    if (m_triangle_list.size() != 6 * (stack - 1) * slice)
+        printf("indices number not correct!\n");
+}
+
+void SphereMesh::generateEdgeList()
+{
+    // generate all the edges from the vertices and triangle list.
+    // courtesy of Eric Lengyel, "Building an Edge List for an Arbitrary Mesh". Terathon Software 3D Graphics Library.
+    // http://www.terathon.com/code/edges.html
+    unsigned int vert_num = m_vertices_number;
+    unsigned int tri_num = m_triangle_list.size() / 3;
+
+    unsigned int* first_edge = new unsigned int[vert_num + 3 * tri_num];
+    unsigned int* next_edge = first_edge + vert_num;
+
+    for (unsigned int i = 0; i < vert_num; ++i)
+        first_edge[i] = 0xFFFFFFFF;
+    // First pass over all triangles. Finds out all the edges satisfying the condition that
+    // the first vertex index is less than the second vertex index when the direction from 
+    // the first to the second represents a counterclockwise winding around the triangle to
+    // which the edge belongs. For each edge found, the edge index is stored in a linked 
+    // list of edges belonging to the lower-numbered vertex index i. This allows us to 
+    // quickly find an edge in the second pass whose higher-numbered vertex is i.
+
+    unsigned int edge_count = 0;
+    const unsigned int* triangle = &m_triangle_list[0];
+    unsigned int i1, i2;
+    for (unsigned int t = 0; t < tri_num; ++t)
+    {
+        i1 = triangle[2];
+        for (unsigned int n = 0; n < 3; ++n)
+        {
+            i2 = triangle[n];
+            if (i1 < i2)
+            {
+                Edge new_edge;
+                new_edge.m_v1 = i1;
+                new_edge.m_v2 = i2;
+                new_edge.m_tri1 = t;
+                new_edge.m_tri2 = t;
+                m_edge_list.push_back(new_edge);
+
+                unsigned int edge_idx = first_edge[i1];
+                if (edge_idx == 0xFFFFFFFF)
+                {
+                    first_edge[i1] = edge_count;
+                }
+                else
+                {
+                    while (true)
+                    {
+                        unsigned int idx = next_edge[edge_idx];
+                        if (idx == 0xFFFFFFFF)
+                        {
+                            next_edge[edge_idx] = edge_count;
+                            break;
+                        }
+                        edge_idx = idx;
+                    }
+                }
+
+                next_edge[edge_count] = 0xFFFFFFFF;
+                edge_count++;
+            }
+            i1 = i2;
+        }
+        triangle += 3;
+    }
+
+    // Second pass over all triangles. Finds out all the edges satisfying the condition that
+    // the first vertex index is greater than the second vertex index when the direction from 
+    // the first to the second represents a counterclockwise winding around the triangle to
+    // which the edge belongs. For each of these edges, the same edge should have already been
+    // found in the first pass for a different triangle. So we search the list of edges for the
+    // higher-numbered index for the matching edge and fill in the second triangle index. The 
+    // maximum number of the comparisons in this search for any vertex is the number of edges
+    // having that vertex as an endpoint.
+    triangle = &m_triangle_list[0];
+    for (unsigned int t = 0; t < tri_num; ++t)
+    {
+        i1 = triangle[2];
+        for (unsigned int n = 0; n < 3; ++n)
+        {
+            i2 = triangle[n];
+            if (i1 > i2)
+            {
+                bool is_new_edge = true;
+                for (unsigned int edge_idx = first_edge[i2]; edge_idx != 0xFFFFFFFF; edge_idx = next_edge[edge_idx])
+                {
+                    Edge* edge = &m_edge_list[edge_idx];
+                    if ((edge->m_v2 == i1) && (edge->m_tri1 == edge->m_tri2))
+                    {
+                        edge->m_tri2 = t;
+                        is_new_edge = false;
+                        break;
+                    }
+                }
+                // for case where a edge belongs to only one triangle. i.e. mesh is not watertight.
+                if (is_new_edge)
+                {
+                    Edge new_edge;
+                    new_edge.m_v1 = i1;
+                    new_edge.m_v2 = i2;
+                    new_edge.m_tri1 = t;
+                    new_edge.m_tri2 = t;
+                    m_edge_list.push_back(new_edge);
+
+                    unsigned int edge_idx = first_edge[i1];
+                    if (edge_idx == 0xFFFFFFFF)
+                    {
+                        first_edge[i1] = edge_count;
+                    }
+                    else
+                    {
+                        while (true)
+                        {
+                            unsigned int idx = next_edge[edge_idx];
+                            if (idx == 0xFFFFFFFF)
+                            {
+                                next_edge[edge_idx] = edge_count;
+                                break;
+                            }
+                            edge_idx = idx;
+                        }
+                    }
+
+                    next_edge[edge_count] = 0xFFFFFFFF;
+                    edge_count++;
+                }
+            }
+            i1 = i2;
+        }
+        triangle += 3;
+    }
+
+    delete[] first_edge;
+    //printf("Edge number: %u.\n", m_edge_list.size());
+}

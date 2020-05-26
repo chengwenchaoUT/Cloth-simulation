@@ -44,11 +44,15 @@
 #include "camera.h"
 #include "scene.h"
 #include "primitive.h"
+#include "ccdAPI.h"
 //----------Core--------------//
 #include "mesh.h"
 #include "simulation.h"
 
 #include "act_mesh.h"
+
+#define UPDATE_FCL 0
+#define UPDATE_CCD 1
 
 //----------Project Key Globals--------------//
 AntTweakBarWrapper* g_config_bar;
@@ -77,6 +81,7 @@ bool g_record = false;
 bool g_pause = true;
 bool g_show_wireframe = false;
 bool g_show_texture = false;
+bool g_show_model = true;
 bool g_texture_load_succeed = false;
 
 //----------Mouse Control--------------------//
@@ -89,6 +94,7 @@ mmc::FpsTracker g_fps_tracker;
 int g_max_fps = 30;
 int g_timestep = 1000 / g_max_fps;
 int g_current_frame = 0;
+int g_update_mode = UPDATE_CCD;
 
 //----------glut function handlers-----------//
 void resize(int, int);
@@ -110,6 +116,7 @@ void cleanup(void);
 void draw_overlay(void);
 void grab_screen(void);
 void grab_screen(char* filename);
+void ccd_init(void);
 
 int main(int argc, char ** argv)
 {
@@ -175,7 +182,15 @@ void timeout(int value)
     if (!g_pause) 
     {
         // update mesh
-        g_simulation->Update();
+        if (g_update_mode == UPDATE_FCL) {
+            g_simulation->Update_FCL();
+        }
+        else if (g_update_mode == UPDATE_CCD) {
+            g_simulation->Update_CCD();
+        }
+        else {
+            g_simulation->Update();
+        }
         // grab screen
         if (g_record) 
         {
@@ -200,8 +215,11 @@ void display() {
 
     // Draw world and cloth (using programmable shaders)
 	g_renderer->ActivateShaderprog();
-    g_scene->Draw(g_renderer->getVBO(), g_shader, \
-				  g_current_frame * ani_speed, g_camera, show_character);
+    if (g_show_model) {
+        g_scene->Draw(g_renderer->getVBO(), g_shader, \
+            g_current_frame * ani_speed, g_camera, show_character, \
+            g_show_wireframe);
+    }
     g_mesh->Draw(g_renderer->getVBO(), \
                  g_show_wireframe, \
                  g_show_texture & g_texture_load_succeed);
@@ -417,13 +435,17 @@ void init()
 
 	// primitive init
 	fprintf(stdout, "Initializing primitive...\n");
-	g_primitive = new AiMesh("./Model/only-char.fbx", vec3(0.0, -0.9, 0.0), 0.1);
+    //g_primitive = new AiMesh("./Model/fatman.obj", 0.1);
+    g_primitive = new AiMesh("./Model/fatman.obj",5.0);
+    g_primitive->move_to(vec3(0.0, -2.0, 0.0));
+    //g_primitive = new Sphere(3);
+    //g_primitive->move_to(vec3(0.0, 0.0, -7.0));
 	g_scene->InsertPrimitve(g_primitive);
 
 	// animation init
-	fprintf(stdout, "Initializing animation...\n");
+	//fprintf(stdout, "Initializing animation...\n");
 	//g_character = new ActMesh("./Model/only-char.fbx");
-	g_shader = new Shader("./shaders/animation.vs", "./shaders/animation.fs");
+	//g_shader = new Shader("./shaders/animation.vs", "./shaders/animation.fs");
 
     // simulation init
     fprintf(stdout, "Initializing simulation...\n");
@@ -433,6 +455,83 @@ void init()
     g_config_bar->LoadSettings();
 
     reset_simulation(NULL);
+
+    // ccd init
+    if (g_update_mode == UPDATE_CCD) {
+        ccd_init();
+    }
+}
+
+void EECallback(unsigned int e1_v1, unsigned e1_v2,
+    unsigned int e2_v1, unsigned int e2_v2, float t) {
+    Mesh* mesh = g_simulation->GetMesh();
+    unsigned int cloth_vertex_num = mesh->GetVertexNumber();
+
+    if (e1_v1 < cloth_vertex_num) {
+        mesh->isRollBack[e1_v1] = true;
+    }
+    if (e1_v2 < cloth_vertex_num) {
+        mesh->isRollBack[e1_v2] = true;
+    }
+    if (e2_v1 < cloth_vertex_num) {
+        mesh->isRollBack[e2_v1] = true;
+    }
+    if (e2_v2 < cloth_vertex_num) {
+        mesh->isRollBack[e2_v2] = true;
+    }
+}
+
+void VFCallback(unsigned int vid, unsigned int fid, float t) {
+    Mesh* mesh = g_simulation->GetMesh();
+    unsigned int cloth_vertex_num = mesh->GetVertexNumber();
+
+    if (vid < cloth_vertex_num) {
+        mesh->isRollBack[vid] = true;
+    }
+}
+
+void ccd_init() {
+    vec3f_list vtxs;
+    tri_list tris;
+
+    // process cloth
+    Mesh* mesh = g_simulation->GetMesh();
+    VectorX cloth_pos = mesh->GetCurrentPosition();
+    std::vector<unsigned int> cloth_tri = mesh->GetTriangles();
+    unsigned int cloth_vertex_num = mesh->GetVertexNumber();
+
+    for (unsigned int i = 0; i < cloth_vertex_num; i++)
+    {
+        vtxs.push_back(vec3f(cloth_pos[3 * i], cloth_pos[3 * i + 1], cloth_pos[3 * i + 2]));
+    }
+    for (unsigned int i = 0; i < cloth_tri.size(); i = i + 3)
+    {
+        tris.push_back(tri3f(cloth_tri[i], cloth_tri[i + 1], cloth_tri[i + 2]));
+    }
+
+    // process primitives
+    Scene* scene = g_simulation->GetScene();
+    vector<Primitive*> m_primitives = scene->getPrimitives();
+    vector<glm::vec3> m_positions;
+    vector<unsigned short> m_indices;
+    for (vector<Primitive*>::iterator iter = m_primitives.begin(); iter != m_primitives.end(); ++iter)
+    {
+        m_positions = (*iter)->getVertices();
+        m_indices = (*iter)->getTriangles();
+
+        for (unsigned int i = 0; i < m_positions.size(); ++i)
+        {
+            vtxs.push_back(vec3f(m_positions[i].x, m_positions[i].y, m_positions[i].z));
+        }
+        for (unsigned int i = 0; i < m_indices.size(); i = i + 3)
+        {
+            tris.push_back(tri3f(m_indices[i] + cloth_vertex_num, m_indices[i + 1] + cloth_vertex_num, m_indices[i + 2] + cloth_vertex_num));
+        }
+    }
+
+    ccdInitModel(vtxs, tris);
+    ccdSetEECallback(EECallback);
+    ccdSetVFCallback(VFCallback);
 }
 
 void cleanup() // clean up in a reverse order
@@ -482,9 +581,15 @@ void TW_CALL reset_simulation(void*)
 		g_mesh = new DressMesh();
 		show_character = false;
 		break;
+    case MESH_TYPE_SPHERE:
+        delete g_mesh;
+        g_mesh = new SphereMesh(5);
+        break;
     }
     g_config_bar->LoadSettings();
     g_mesh->Reset();
+    g_mesh->moveTo(vec3(0.0, -2.0, 0.0));
+
 
     // reset simulation
     g_simulation->SetMesh(g_mesh);
@@ -504,7 +609,15 @@ void TW_CALL step_through(void*)
     }
 
     // update scene
-    g_simulation->Update();
+    if (g_update_mode == UPDATE_FCL) {
+        g_simulation->Update_FCL();
+    }
+    else if (g_update_mode == UPDATE_CCD) {
+        g_simulation->Update_CCD();
+    }
+    else {
+        g_simulation->Update();
+    }
 
     g_current_frame++;
 }

@@ -66,8 +66,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Users\heihuhu\Desktop\research\ThirdParty\include;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Users\heihuhu\Desktop\research\ThirdParty\libs\x64;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\heihuhu\Desktop\research\ThirdParty\include;C:\Users\heihuhu\Desktop\research\ThirdParty\include\fcl\include;C:\Users\heihuhu\Desktop\research\ThirdParty\include\eigen3;C:\Users\heihuhu\Desktop\research\ThirdParty\include\self-ccd-1.0\inc;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\heihuhu\Desktop\research\ThirdParty\libs\x64;C:\Users\heihuhu\Desktop\research\ThirdParty\include\fcl\lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -90,7 +90,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>../external_dependencies/AntTweakBar/lib;../external_dependencies/glew/lib;../external_dependencies/freeglut/lib/x64;../external_dependencies/TinyXML/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>tinyxmld_STL.lib;glew32.lib;glu32.lib;opengl32.lib;freeglut.lib;AntTweakBar64.lib;glfw3.lib;SOIL.lib;assimp-vc140-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>tinyxmld_STL.lib;glew32.lib;glu32.lib;opengl32.lib;freeglut.lib;AntTweakBar64.lib;glfw3.lib;SOIL.lib;assimp-vc140-mt.lib;fcl.lib;ccd.lib;dccd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">

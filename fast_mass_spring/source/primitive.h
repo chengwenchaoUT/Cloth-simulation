@@ -65,12 +65,16 @@ public:
         return m_type;
     }
 
-    virtual void move_to(const glm::vec3& target) {m_pos = target;}
+    virtual void move_to(const glm::vec3& translation);
     virtual bool StaticIntersectionTest(const EigenVector3& p, EigenVector3& normal, ScalarType& dist) {return false;}
 
     virtual void change_color(const glm::vec3& color);
-    virtual void Draw(const VBO& vbos);
+    virtual void Draw(const VBO& vbos, bool wire_frame);
 	virtual void DrawAnim(void);
+
+    virtual std::vector<glm::vec3> getVertices() { return m_positions; }
+    virtual std::vector<unsigned short> getTriangles() { return m_indices; }
+
 
 protected:
     virtual void init_visualization() {}
@@ -80,10 +84,10 @@ public:
     glm::vec3 m_vel;
     bool m_has_vel;
     bool m_has_gravity;
+    std::vector<glm::vec3> m_positions, m_colors, m_normals;
 
 protected:
     PrimitiveType m_type;
-    std::vector<glm::vec3> m_positions, m_colors, m_normals;
     std::vector<unsigned short> m_indices;
 };
 
